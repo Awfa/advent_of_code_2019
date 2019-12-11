@@ -1,33 +1,10 @@
-use std::convert::{TryFrom, TryInto};
+use opcode_macro::make_op_code;
 use std::ops::Index;
 
-#[derive(Debug, Clone)]
-struct OpCodeParseError(usize);
-
-macro_rules! associated_enum {
-    ($enum_name:ident($associated_type:ty, $error_type:ident) { $($variant:ident = $value:expr),+ }) => {
-        #[derive(Debug, Copy, Clone)]
-        enum $enum_name {
-            $($variant),+
-        }
-
-        impl TryFrom<$associated_type> for $enum_name {
-            type Error = $error_type;
-
-            fn try_from(v: $associated_type) -> Result<Self, Self::Error> {
-                match v {
-                    $($value => Ok($enum_name::$variant)),+,
-                    _ => Err( $error_type(v) )
-                }
-            }
-        }
-    }
-}
-
-associated_enum!(OpCode(usize, OpCodeParseError) {
-    Add = 1,
-    Multiply = 2,
-    End = 99
+make_op_code!(OpCode {
+    1 = Add(addend1: DereferencedAddress, addend2: DereferencedAddress, dest: Writable) { *dest = addend1 + addend2; },
+    2 = Multiply(factor1: DereferencedAddress, factor2: DereferencedAddress, dest: Writable) { *dest = factor1 * factor2; },
+    99 = End!
 });
 
 #[derive(Debug, Clone)]
@@ -112,93 +89,13 @@ impl Emulator {
     }
 
     pub fn step(&mut self) -> Result<EmulatorResult, EmulatorError> {
-        let instruction = self.get_current_instruction()?;
-        match instruction {
-            OpCode::Add => {
-                let (parameters, parameter_start_location) = self.get_parameters(&instruction)?;
-                let sum = self.try_dereference(parameters[0], parameter_start_location)?
-                    + self.try_dereference(parameters[1], parameter_start_location + 1)?;
-                let destination =
-                    self.try_dereference_mut(parameters[2], parameter_start_location + 2)?;
-                *destination = sum;
-                self.instruction_pointer += 4;
-                Ok(EmulatorResult::Running)
+        OpCode::run(&mut self.memory, self.instruction_pointer).map(|run_result| match run_result {
+            Some(instruction_pointer_offset) => {
+                self.instruction_pointer += instruction_pointer_offset;
+                EmulatorResult::Running
             }
-            OpCode::Multiply => {
-                let (parameters, parameter_start_location) = self.get_parameters(&instruction)?;
-                let product = self.try_dereference(parameters[0], parameter_start_location)?
-                    * self.try_dereference(parameters[1], parameter_start_location + 1)?;
-                let destination =
-                    self.try_dereference_mut(parameters[2], parameter_start_location + 2)?;
-                *destination = product;
-                self.instruction_pointer += 4;
-                Ok(EmulatorResult::Running)
-            }
-            OpCode::End => Ok(EmulatorResult::Done),
-        }
-    }
-
-    fn get_current_instruction(&self) -> Result<OpCode, EmulatorError> {
-        (*self.memory.get(self.instruction_pointer).ok_or(
-            EmulatorError::InstructionPointerOutOfBounds {
-                position: self.instruction_pointer,
-            },
-        )?)
-        .try_into()
-        .map_err(|err: OpCodeParseError| EmulatorError::InvalidInstruction {
-            value_found: err.0,
-            position: self.instruction_pointer,
+            None => EmulatorResult::Done,
         })
-    }
-
-    fn get_parameters(&self, instruction: &OpCode) -> Result<(Vec<usize>, usize), EmulatorError> {
-        let expected = match instruction {
-            OpCode::Add | OpCode::Multiply => 3,
-            OpCode::End => {
-                unreachable!("Emulator::get_parameters shouldn't be called with OpCode::End")
-            }
-        };
-        if self.instruction_pointer + expected + 1 < self.memory.len() {
-            Ok((
-                self.memory[self.instruction_pointer + 1..self.instruction_pointer + expected + 1]
-                    .into(),
-                self.instruction_pointer + 1,
-            ))
-        } else {
-            dbg!(self.instruction_pointer);
-            dbg!(expected);
-            Err(EmulatorError::NotEnoughParametersForInstruction {
-                instruction: *instruction as usize,
-                expected,
-                found: self.instruction_pointer + expected + 1 - self.memory.len(),
-            })
-        }
-    }
-
-    fn try_dereference(
-        &self,
-        index: usize,
-        location_of_index: usize,
-    ) -> Result<&usize, EmulatorError> {
-        self.memory
-            .get(index)
-            .ok_or(EmulatorError::InvalidMemoryLocation {
-                value_found: index,
-                position: location_of_index,
-            })
-    }
-
-    fn try_dereference_mut(
-        &mut self,
-        index: usize,
-        location_of_index: usize,
-    ) -> Result<&mut usize, EmulatorError> {
-        self.memory
-            .get_mut(index)
-            .ok_or(EmulatorError::InvalidMemoryLocation {
-                value_found: index,
-                position: location_of_index,
-            })
     }
 }
 

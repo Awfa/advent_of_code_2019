@@ -1,11 +1,14 @@
 [package]
-name = "advent_of_code_2019"
+name = "opcode-macro"
 version = "0.1.0"
 authors = ["antha"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+proc-macro = true
 
 [dependencies]
-structopt = "0.3"
-opcode-macro = { path = "opcode-macro" }
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = "1.0"
