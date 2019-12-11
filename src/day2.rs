@@ -32,7 +32,7 @@ pub fn run_part_2(path: &str) -> Option<usize> {
             initial_memory[2] = verb;
             let mut emulator = Emulator::new(&initial_memory);
 
-            if emulator.run_to_completion().unwrap() == 19690720 {
+            if emulator.run_to_completion().unwrap() == 19_690_720 {
                 let answer = 100 * noun + verb;
                 return Some(answer);
             }

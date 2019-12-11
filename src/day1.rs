@@ -8,11 +8,11 @@ pub fn run_part_1(path: &str) -> u64 {
         .lines()
         .map(|s| s.unwrap().parse::<u64>().unwrap())
         .map(calculate_required_fuel_naive)
-        .fold(0u64, |acc, e| acc + e)
+        .sum()
 }
 
 fn calculate_required_fuel_naive(mass: u64) -> u64 {
-    (mass / 3).checked_sub(2).unwrap_or(0)
+    (mass / 3).saturating_sub(2)
 }
 
 pub fn run_part_2(path: &str) -> u64 {
@@ -22,7 +22,7 @@ pub fn run_part_2(path: &str) -> u64 {
         .lines()
         .map(|s| s.unwrap().parse::<u64>().unwrap())
         .map(calculate_required_fuel_with_wish)
-        .fold(0u64, |acc, e| acc + e)
+        .sum()
 }
 
 fn calculate_required_fuel_with_wish(mass: u64) -> u64 {

@@ -1,3 +1,5 @@
+#![deny(clippy::all)]
+
 use opcode_macro::make_op_code;
 use std::ops::Index;
 

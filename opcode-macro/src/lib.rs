@@ -1,4 +1,8 @@
+#[deny(clippy::all)]
+
 extern crate proc_macro;
+extern crate syn;
+
 use quote::{format_ident, quote};
 use syn::{braced, Block, parenthesized, parse_macro_input, token, Ident, Result, Token, LitInt, Stmt};
 use syn::parse::{Parse, ParseStream};
@@ -212,7 +216,6 @@ pub fn make_op_code(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let variant_handler_dispatchers = input.variants.iter().map(|variant| {
         let ident = &variant.ident;
-        let stmts = &variant.function;
         let parens = variant.parameters.iter().enumerate().map(|(idx, parameter)| {
             let param_ident = &parameter.ident;
             match parameter.parameter_type {
