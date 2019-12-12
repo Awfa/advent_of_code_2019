@@ -3,9 +3,14 @@
 use opcode_macro::make_op_code;
 use std::ops::Index;
 
+enum ParameterMode {
+    Position,  // = Position(memory: Memory, parameter_value: ParameterValue) {},
+    Immediate, // = Immediate(parameter_value: ParameterValue) {},
+}
+
 make_op_code!(OpCode {
-    1 = Add(addend1: DereferencedAddress, addend2: DereferencedAddress, dest: Writable) { *dest = addend1 + addend2; },
-    2 = Multiply(factor1: DereferencedAddress, factor2: DereferencedAddress, dest: Writable) { *dest = factor1 * factor2; },
+    1 = Add(addend1: ReadOnly, addend2: ReadOnly, dest: Writable) { *dest = addend1 + addend2; },
+    2 = Multiply(factor1: ReadOnly, factor2: ReadOnly, dest: Writable) { *dest = factor1 * factor2; },
     99 = End!
 });
 
@@ -25,6 +30,14 @@ pub enum EmulatorError {
         position: usize,
     },
     InstructionPointerOutOfBounds {
+        position: usize,
+    },
+    InvalidParameterMode {
+        value_found: usize,
+        position: usize,
+    },
+    UnexpectedParameterModeForWritable {
+        value_found: usize,
         position: usize,
     },
 }
@@ -61,6 +74,16 @@ impl std::fmt::Display for EmulatorError {
                 f,
                 "Location pointer is at {} which is out of bounds",
                 position
+            ),
+            EmulatorError::InvalidParameterMode { value_found, position } => write!(
+                f,
+                "Invalid parameter mode {} referenced at {}",
+                value_found, position
+            ),
+            EmulatorError::UnexpectedParameterModeForWritable { value_found, position } => write!(
+                f,
+                "Writable parameter at {} has invalid parameter mode {}. The parameter mode must be 0",
+                position, value_found
             ),
         }
     }
@@ -189,6 +212,18 @@ mod tests {
         assert_eq!(&[30, 1, 1, 4, 2, 5, 6, 0, 99], emulator.memory.as_slice());
         assert_eq!(EmulatorResult::Done, emulator.step()?);
         assert_eq!(EmulatorResult::Done, emulator.step()?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parameter_modes() -> Result<(), EmulatorError> {
+        let input = [1002, 4, 3, 4, 33];
+        let mut emulator = Emulator::new(&input);
+        assert_eq!(&input, emulator.memory.as_slice());
+
+        assert_eq!(EmulatorResult::Running, emulator.step()?);
+        assert_eq!(&[1002, 4, 3, 4, 99], emulator.memory.as_slice());
 
         Ok(())
     }

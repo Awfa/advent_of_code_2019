@@ -11,7 +11,7 @@ use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
 
 mod kw {
-    syn::custom_keyword!(DereferencedAddress);
+    syn::custom_keyword!(ReadOnly);
     syn::custom_keyword!(Writable);
 }
 
@@ -98,16 +98,16 @@ impl Parse for Parameter {
 }
 
 enum ParameterType {
-    DereferencedAddress,
+    ReadOnly,
     Writable
 }
 
 impl Parse for ParameterType {
     fn parse(input: ParseStream) -> Result<Self> {
         let lookahead = input.lookahead1();
-        if lookahead.peek(kw::DereferencedAddress) {
-            input.parse::<kw::DereferencedAddress>()?;
-            Ok(ParameterType::DereferencedAddress)
+        if lookahead.peek(kw::ReadOnly) {
+            input.parse::<kw::ReadOnly>()?;
+            Ok(ParameterType::ReadOnly)
         } else if lookahead.peek(kw::Writable) {
             input.parse::<kw::Writable>()?;
             Ok(ParameterType::Writable)
@@ -162,15 +162,31 @@ pub fn make_op_code(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             quote!{#code => Ok(#enum_name::#ident)}
         });
         quote!{
-            fn get_current_instruction(memory: &[usize], instruction_pointer: usize) -> Result<#enum_name, EmulatorError> {
-                let instruction_value = memory.get(instruction_pointer).ok_or(
+            fn get_current_instruction(memory: &[usize], instruction_pointer: usize) -> Result<(#enum_name, impl Iterator<Item = Result<ParameterMode, EmulatorError>>), EmulatorError> {
+                let instruction_value = *memory.get(instruction_pointer).ok_or(
                     EmulatorError::InstructionPointerOutOfBounds {
                         position: instruction_pointer,
                     })?;
-                match *instruction_value {
+                let instruction = match (instruction_value % 100) {
                     #(#translation_from_code_match_arms),*,
-                    _ => Err(EmulatorError::InvalidInstruction{value_found: *instruction_value, position:instruction_pointer})
-                }
+                    _ => Err(EmulatorError::InvalidInstruction{value_found: instruction_value, position: instruction_pointer})
+                }?;
+
+                let parameter_mode_iterator = {
+                    let mut parameter_mode_digits = instruction_value / 100;
+                    std::iter::from_fn(move || {
+                        let parameter_mode_digit = parameter_mode_digits % 10;
+                        let result = match parameter_mode_digit {
+                            0 => Ok(ParameterMode::Position),
+                            1 => Ok(ParameterMode::Immediate),
+                            _ => Err(EmulatorError::InvalidParameterMode{value_found: parameter_mode_digit, position: instruction_pointer}),
+                        };
+                        parameter_mode_digits /= 10;
+                        Some(result)
+                    })
+                };
+
+                Ok((instruction, parameter_mode_iterator))
             }
         }
     };
@@ -197,7 +213,7 @@ pub fn make_op_code(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let fn_param_list = variant.parameters.iter().map(|parameter| {
             let param_ident = &parameter.ident;
             match parameter.parameter_type {
-                ParameterType::DereferencedAddress => quote!{
+                ParameterType::ReadOnly => quote!{
                     #param_ident: usize
                 },
                 ParameterType::Writable => quote!{
@@ -219,26 +235,39 @@ pub fn make_op_code(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let parens = variant.parameters.iter().enumerate().map(|(idx, parameter)| {
             let param_ident = &parameter.ident;
             match parameter.parameter_type {
-                ParameterType::DereferencedAddress => quote!{
-                    let #param_ident = {
-                        let parameter_location = instruction_pointer + #idx + 1;
-                        let address = memory[parameter_location];
-                        *memory.get(address)
-                            .ok_or(EmulatorError::InvalidMemoryLocation {
-                                value_found: address,
-                                position: parameter_location,
-                            })?
+                ParameterType::ReadOnly => quote!{
+                    let #param_ident = match parameter_mode_iterator.next().unwrap()? {
+                        ParameterMode::Position => {
+                            let parameter_location = instruction_pointer + #idx + 1;
+                            let address = memory[parameter_location];
+                            *memory.get(address)
+                                .ok_or(EmulatorError::InvalidMemoryLocation {
+                                    value_found: address,
+                                    position: parameter_location,
+                                })?
+                        },
+                        ParameterMode::Immediate => {
+                            memory[instruction_pointer + #idx + 1]
+                        }
                     };
                 },
                 ParameterType::Writable => quote!{
-                    let #param_ident = {
-                        let parameter_location = instruction_pointer + #idx + 1;
-                        let address = memory[parameter_location];
-                        memory.get_mut(address)
-                            .ok_or(EmulatorError::InvalidMemoryLocation {
-                                value_found: address,
-                                position: parameter_location,
-                            })?
+                    let #param_ident = match parameter_mode_iterator.next().unwrap()? {
+                        ParameterMode::Position => {
+                            let parameter_location = instruction_pointer + #idx + 1;
+                            let address = memory[parameter_location];
+                            memory.get_mut(address)
+                                .ok_or(EmulatorError::InvalidMemoryLocation {
+                                    value_found: address,
+                                    position: parameter_location,
+                                })?
+                        },
+                        ParameterMode::Immediate => {
+                            return Err(EmulatorError::UnexpectedParameterModeForWritable {
+                                value_found: 1,
+                                position: instruction_pointer + #idx + 1,
+                            })
+                        }
                     };
                 }
             }
@@ -298,7 +327,7 @@ pub fn make_op_code(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 #(#variant_handler_functions)*
 
                 fn run(memory: &mut [usize], instruction_pointer: usize) -> Result<Option<usize>, EmulatorError> {
-                    let instruction = #enum_name::get_current_instruction(memory, instruction_pointer)?;
+                    let (instruction, mut parameter_mode_iterator) = #enum_name::get_current_instruction(memory, instruction_pointer)?;
                     match instruction {
                         #(#variant_handler_dispatchers),*
                     }
@@ -307,7 +336,7 @@ pub fn make_op_code(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
     };
 
-    // println!("{}", output);
+    println!("{}", output);
 
     proc_macro::TokenStream::from(output)
 }
