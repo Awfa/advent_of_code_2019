@@ -30,6 +30,20 @@ make_op_code!(OpCode {
     4 = Output(value: ReadOnly) {
         Ok(Some(value))
     },
+    7 = LessThan(left_side: ReadOnly, right_side: ReadOnly, dest: Writable) {
+        *dest = match left_side < right_side {
+            true => 1,
+            false => 0
+        };
+        Ok(None)
+    },
+    8 = Equals(left_side: ReadOnly, right_side: ReadOnly, dest: Writable) {
+        *dest = match left_side == right_side {
+            true => 1,
+            false => 0
+        };
+        Ok(None)
+    },
     99 = End!
 });
 
