@@ -1,5 +1,3 @@
-#![deny(clippy::all)]
-
 use opcode_macro::make_op_code;
 use std::ops::Index;
 
@@ -216,6 +214,7 @@ impl<I: Iterator<Item = Result<EmulatorMemoryType, EmulatorError>>> Index<usize>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::iter::once;
 
     #[test]
     fn test_example() -> Result<(), EmulatorError> {
@@ -314,7 +313,7 @@ mod tests {
     #[test]
     fn test_input_output() -> Result<(), EmulatorError> {
         let initial_address = [3, 0, 4, 0, 99];
-        let mut emulator = Emulator::new(&initial_address, std::iter::once(Ok(1337)));
+        let mut emulator = Emulator::new(&initial_address, once(Ok(1337)));
         assert_eq!(&initial_address, emulator.memory.as_slice());
 
         assert_eq!(EmulatorResult::Success, emulator.step()?);
@@ -331,7 +330,7 @@ mod tests {
     #[test]
     fn test_output_iterator() -> Result<(), EmulatorError> {
         let initial_address = [3, 0, 4, 0, 99];
-        let emulator = Emulator::new(&initial_address, std::iter::once(Ok(1337)));
+        let emulator = Emulator::new(&initial_address, once(Ok(1337)));
         assert_eq!(&initial_address, emulator.memory.as_slice());
 
         let mut iterator = emulator.into_output_iter();
@@ -359,21 +358,21 @@ mod tests {
     fn test_equals_with_position_mode() -> Result<(), EmulatorError> {
         let initial_address = [3, 9, 8, 9, 10, 9, 4, 9, 99, -1, 8];
         {
-            let emulator = Emulator::new(&initial_address, std::iter::once(Ok(7)));
+            let emulator = Emulator::new(&initial_address, once(Ok(7)));
             assert_eq!(
                 0,
                 emulator.into_output_iter().collect::<Result<Vec<_>, _>>()?[0]
             );
         }
         {
-            let emulator = Emulator::new(&initial_address, std::iter::once(Ok(8)));
+            let emulator = Emulator::new(&initial_address, once(Ok(8)));
             assert_eq!(
                 1,
                 emulator.into_output_iter().collect::<Result<Vec<_>, _>>()?[0]
             );
         }
         {
-            let emulator = Emulator::new(&initial_address, std::iter::once(Ok(9)));
+            let emulator = Emulator::new(&initial_address, once(Ok(9)));
             assert_eq!(
                 0,
                 emulator.into_output_iter().collect::<Result<Vec<_>, _>>()?[0]
@@ -387,21 +386,21 @@ mod tests {
     fn test_less_than_with_position_mode() -> Result<(), EmulatorError> {
         let initial_address = [3, 9, 7, 9, 10, 9, 4, 9, 99, -1, 8];
         {
-            let emulator = Emulator::new(&initial_address, std::iter::once(Ok(7)));
+            let emulator = Emulator::new(&initial_address, once(Ok(7)));
             assert_eq!(
                 1,
                 emulator.into_output_iter().collect::<Result<Vec<_>, _>>()?[0]
             );
         }
         {
-            let emulator = Emulator::new(&initial_address, std::iter::once(Ok(8)));
+            let emulator = Emulator::new(&initial_address, once(Ok(8)));
             assert_eq!(
                 0,
                 emulator.into_output_iter().collect::<Result<Vec<_>, _>>()?[0]
             );
         }
         {
-            let emulator = Emulator::new(&initial_address, std::iter::once(Ok(9)));
+            let emulator = Emulator::new(&initial_address, once(Ok(9)));
             assert_eq!(
                 0,
                 emulator.into_output_iter().collect::<Result<Vec<_>, _>>()?[0]
@@ -415,21 +414,21 @@ mod tests {
     fn test_equals_with_immediate_mode() -> Result<(), EmulatorError> {
         let initial_address = [3, 3, 1108, -1, 8, 3, 4, 3, 99];
         {
-            let emulator = Emulator::new(&initial_address, std::iter::once(Ok(7)));
+            let emulator = Emulator::new(&initial_address, once(Ok(7)));
             assert_eq!(
                 0,
                 emulator.into_output_iter().collect::<Result<Vec<_>, _>>()?[0]
             );
         }
         {
-            let emulator = Emulator::new(&initial_address, std::iter::once(Ok(8)));
+            let emulator = Emulator::new(&initial_address, once(Ok(8)));
             assert_eq!(
                 1,
                 emulator.into_output_iter().collect::<Result<Vec<_>, _>>()?[0]
             );
         }
         {
-            let emulator = Emulator::new(&initial_address, std::iter::once(Ok(9)));
+            let emulator = Emulator::new(&initial_address, once(Ok(9)));
             assert_eq!(
                 0,
                 emulator.into_output_iter().collect::<Result<Vec<_>, _>>()?[0]
@@ -443,21 +442,21 @@ mod tests {
     fn test_less_than_with_immediate_mode() -> Result<(), EmulatorError> {
         let initial_address = [3, 3, 1107, -1, 8, 3, 4, 3, 99];
         {
-            let emulator = Emulator::new(&initial_address, std::iter::once(Ok(7)));
+            let emulator = Emulator::new(&initial_address, once(Ok(7)));
             assert_eq!(
                 1,
                 emulator.into_output_iter().collect::<Result<Vec<_>, _>>()?[0]
             );
         }
         {
-            let emulator = Emulator::new(&initial_address, std::iter::once(Ok(8)));
+            let emulator = Emulator::new(&initial_address, once(Ok(8)));
             assert_eq!(
                 0,
                 emulator.into_output_iter().collect::<Result<Vec<_>, _>>()?[0]
             );
         }
         {
-            let emulator = Emulator::new(&initial_address, std::iter::once(Ok(9)));
+            let emulator = Emulator::new(&initial_address, once(Ok(9)));
             assert_eq!(
                 0,
                 emulator.into_output_iter().collect::<Result<Vec<_>, _>>()?[0]
@@ -471,21 +470,21 @@ mod tests {
     fn test_jumps_with_position_mode() -> Result<(), EmulatorError> {
         let initial_address = [3, 12, 6, 12, 15, 1, 13, 14, 13, 4, 13, 99, -1, 0, 1, 9];
         {
-            let emulator = Emulator::new(&initial_address, std::iter::once(Ok(-1)));
+            let emulator = Emulator::new(&initial_address, once(Ok(-1)));
             assert_eq!(
                 1,
                 emulator.into_output_iter().collect::<Result<Vec<_>, _>>()?[0]
             );
         }
         {
-            let emulator = Emulator::new(&initial_address, std::iter::once(Ok(0)));
+            let emulator = Emulator::new(&initial_address, once(Ok(0)));
             assert_eq!(
                 0,
                 emulator.into_output_iter().collect::<Result<Vec<_>, _>>()?[0]
             );
         }
         {
-            let emulator = Emulator::new(&initial_address, std::iter::once(Ok(2)));
+            let emulator = Emulator::new(&initial_address, once(Ok(2)));
             assert_eq!(
                 1,
                 emulator.into_output_iter().collect::<Result<Vec<_>, _>>()?[0]
@@ -499,21 +498,21 @@ mod tests {
     fn test_jumps_with_immediate_mode() -> Result<(), EmulatorError> {
         let initial_address = [3, 3, 1105, -1, 9, 1101, 0, 0, 12, 4, 12, 99, 1];
         {
-            let emulator = Emulator::new(&initial_address, std::iter::once(Ok(-1)));
+            let emulator = Emulator::new(&initial_address, once(Ok(-1)));
             assert_eq!(
                 1,
                 emulator.into_output_iter().collect::<Result<Vec<_>, _>>()?[0]
             );
         }
         {
-            let emulator = Emulator::new(&initial_address, std::iter::once(Ok(0)));
+            let emulator = Emulator::new(&initial_address, once(Ok(0)));
             assert_eq!(
                 0,
                 emulator.into_output_iter().collect::<Result<Vec<_>, _>>()?[0]
             );
         }
         {
-            let emulator = Emulator::new(&initial_address, std::iter::once(Ok(2)));
+            let emulator = Emulator::new(&initial_address, once(Ok(2)));
             assert_eq!(
                 1,
                 emulator.into_output_iter().collect::<Result<Vec<_>, _>>()?[0]
@@ -531,21 +530,21 @@ mod tests {
             20, 1105, 1, 46, 98, 99,
         ];
         {
-            let emulator = Emulator::new(&initial_address, std::iter::once(Ok(7)));
+            let emulator = Emulator::new(&initial_address, once(Ok(7)));
             assert_eq!(
                 999,
                 emulator.into_output_iter().collect::<Result<Vec<_>, _>>()?[0]
             );
         }
         {
-            let emulator = Emulator::new(&initial_address, std::iter::once(Ok(8)));
+            let emulator = Emulator::new(&initial_address, once(Ok(8)));
             assert_eq!(
                 1000,
                 emulator.into_output_iter().collect::<Result<Vec<_>, _>>()?[0]
             );
         }
         {
-            let emulator = Emulator::new(&initial_address, std::iter::once(Ok(9)));
+            let emulator = Emulator::new(&initial_address, once(Ok(9)));
             assert_eq!(
                 1001,
                 emulator.into_output_iter().collect::<Result<Vec<_>, _>>()?[0]

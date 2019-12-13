@@ -34,9 +34,9 @@ pub fn run_part_1(path: &str) -> EmulatorMemoryType {
         );
 
         let thrust_output = emulator_e.into_output_iter().last().unwrap().unwrap();
-        highest_thrust = highest_thrust.map_or(Some(thrust_output), |current| {
-            Some(std::cmp::max(thrust_output, current))
-        });
+        highest_thrust = Some(highest_thrust.map_or(thrust_output, |current| {
+            std::cmp::max(thrust_output, current)
+        }));
     }
 
     highest_thrust.unwrap()
@@ -53,12 +53,15 @@ pub fn run_part_2(path: &str) -> EmulatorMemoryType {
 
         let emulator_e_a_loopback_pipe =
             RefCell::new(VecDeque::<Result<EmulatorMemoryType, EmulatorError>>::new());
-        let loopback_iter =
-            std::iter::from_fn(|| emulator_e_a_loopback_pipe.borrow_mut().pop_front());
-        let emulator_a_iter = once(Ok(phase_a))
-            .chain(once(Ok(initial_input)))
-            .chain(loopback_iter);
-        let emulator_a = Emulator::new(&initial_memory, emulator_a_iter);
+
+        let emulator_a = Emulator::new(
+            &initial_memory,
+            once(Ok(phase_a))
+                .chain(once(Ok(initial_input)))
+                .chain(std::iter::from_fn(|| {
+                    emulator_e_a_loopback_pipe.borrow_mut().pop_front()
+                })),
+        );
         let emulator_b = Emulator::new(
             &initial_memory,
             once(Ok(phase_b)).chain(emulator_a.into_output_iter()),
@@ -81,9 +84,9 @@ pub fn run_part_2(path: &str) -> EmulatorMemoryType {
         });
 
         let thrust_output = output_iterator.last().unwrap().unwrap();
-        highest_thrust = highest_thrust.map_or(Some(thrust_output), |current| {
-            Some(std::cmp::max(thrust_output, current))
-        })
+        highest_thrust = Some(highest_thrust.map_or(thrust_output, |current| {
+            std::cmp::max(thrust_output, current)
+        }));
     }
 
     highest_thrust.unwrap()
