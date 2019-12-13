@@ -105,30 +105,25 @@ impl Permutator {
         }
     }
 
-    fn next<'a>(&'a mut self) -> Option<&'a [EmulatorMemoryType]> {
-        loop {
-            if let Some((start, swap_index, explored)) = self.recursion_stack.pop() {
-                // let tab: String = std::iter::repeat(" ").take(self.recursion_stack.len()).collect();
-                // println!("{}start: {}, swap_index: {}, explored: {}", tab, start, swap_index, explored);
-                if start + 1 >= self.array.len() {
-                    return Some(self.array.as_slice());
-                } else {
-                    if swap_index >= self.array.len() {
-                        continue;
-                    } else if !explored {
-                        self.array.swap(start, swap_index);
-                        self.recursion_stack.push((start, swap_index, true));
-                        self.recursion_stack.push((start + 1, start + 1, false));
-                        continue;
-                    } else {
-                        self.array.swap(start, swap_index);
-                        self.recursion_stack.push((start, swap_index + 1, false));
-                        continue;
-                    }
-                }
+    fn next(&mut self) -> Option<&[EmulatorMemoryType]> {
+        while let Some((start, swap_index, explored)) = self.recursion_stack.pop() {
+            // let tab: String = std::iter::repeat(" ").take(self.recursion_stack.len()).collect();
+            // println!("{}start: {}, swap_index: {}, explored: {}", tab, start, swap_index, explored);
+            if start + 1 >= self.array.len() {
+                return Some(self.array.as_slice());
+            } else if swap_index >= self.array.len() {
+                continue;
+            } else if !explored {
+                self.array.swap(start, swap_index);
+                self.recursion_stack.push((start, swap_index, true));
+                self.recursion_stack.push((start + 1, start + 1, false));
+                continue;
             } else {
-                return None;
+                self.array.swap(start, swap_index);
+                self.recursion_stack.push((start, swap_index + 1, false));
+                continue;
             }
         }
+        None
     }
 }

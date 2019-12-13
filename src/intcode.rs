@@ -36,16 +36,10 @@ make_op_code!(OpCode {
         }
     },
     7 = LessThan(left_side: ReadOnly, right_side: ReadOnly, dest: Writable) {
-        *dest = match left_side < right_side {
-            true => 1,
-            false => 0
-        };
+        *dest = if left_side < right_side { 1 } else { 0 };
     },
     8 = Equals(left_side: ReadOnly, right_side: ReadOnly, dest: Writable) {
-        *dest = match left_side == right_side {
-            true => 1,
-            false => 0
-        };
+        *dest = if left_side == right_side { 1 } else { 0 };
     },
     99 = End!
 });
@@ -182,18 +176,28 @@ impl<I: Iterator<Item = Result<EmulatorMemoryType, EmulatorError>>> Emulator<I> 
         })
     }
 
-    pub fn into_output_iter(
-        mut self,
-    ) -> impl Iterator<Item = Result<EmulatorMemoryType, EmulatorError>> {
-        std::iter::from_fn(move || {
-            while match self.step() {
-                Ok(EmulatorResult::Done) => false,
-                Ok(EmulatorResult::Success) => true,
-                Ok(EmulatorResult::SuccessWithValue(value)) => return Some(Ok(value)),
-                Err(e) => return Some(Err(e)),
-            } {}
-            None
-        })
+    pub fn into_output_iter(self) -> EmulatorOutputIterator<I> {
+        EmulatorOutputIterator { emulator: self }
+    }
+}
+
+pub struct EmulatorOutputIterator<I: Iterator<Item = Result<EmulatorMemoryType, EmulatorError>>> {
+    emulator: Emulator<I>,
+}
+
+impl<I: Iterator<Item = Result<EmulatorMemoryType, EmulatorError>>> Iterator
+    for EmulatorOutputIterator<I>
+{
+    type Item = Result<EmulatorMemoryType, EmulatorError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while match self.emulator.step() {
+            Ok(EmulatorResult::Done) => false,
+            Ok(EmulatorResult::Success) => true,
+            Ok(EmulatorResult::SuccessWithValue(value)) => return Some(Ok(value)),
+            Err(e) => return Some(Err(e)),
+        } {}
+        None
     }
 }
 
