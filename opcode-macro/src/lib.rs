@@ -325,7 +325,7 @@ pub fn make_op_code(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let mut parameters = Vec::new();
         let iterator_bound = if let Some(ident) = &variant.input_ident {
             parameters.push(quote!{#ident: &mut I});
-            quote!{<I: Iterator<Item=EmulatorMemoryType>>}
+            quote!{<I: Iterator<Item = Result<EmulatorMemoryType, EmulatorError>>>}
         } else {
             quote!{}
         };
@@ -478,7 +478,7 @@ pub fn make_op_code(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
                 #(#variant_handler_functions)*
 
-                fn run<I: Iterator<Item=EmulatorMemoryType>>(memory: &mut [EmulatorMemoryType], instruction_pointer: usize, input_iter: &mut I) -> Result<(Option<usize>, Option<EmulatorMemoryType>), EmulatorError> {
+                fn run<I: Iterator<Item = Result<EmulatorMemoryType, EmulatorError>>>(memory: &mut [EmulatorMemoryType], instruction_pointer: usize, input_iter: &mut I) -> Result<(Option<usize>, Option<EmulatorMemoryType>), EmulatorError> {
                     let (instruction, mut parameter_mode_iterator) = #enum_name::get_current_instruction(memory, instruction_pointer)?;
                     let mut new_instruction_pointer = None;
                     match instruction {

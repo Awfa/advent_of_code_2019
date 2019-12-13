@@ -7,5 +7,6 @@ fn main() {
     // println!("{}", day2::run_part_1("input/2.txt"));
     // println!("{}", day2::run_part_2("input/2.txt").unwrap());
     // println!("{}", day5::run_part_1("input/5.txt"));
-    println!("{}", day5::run_part_2("input/5.txt"));
+    // println!("{}", day5::run_part_2("input/5.txt"));
+    println!("{}", day7::run_part_1("input/7.txt"));
 }

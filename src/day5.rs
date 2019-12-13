@@ -11,7 +11,7 @@ pub fn run_part_1(path: &str) -> EmulatorMemoryType {
         .collect::<Result<Vec<_>, _>>()
         .unwrap();
 
-    let emulator = Emulator::new(&initial_memory, std::iter::once(1));
+    let emulator = Emulator::new(&initial_memory, std::iter::once(Ok(1)));
     let outputs = emulator
         .into_output_iter()
         .collect::<Result<Vec<_>, _>>()
@@ -28,7 +28,7 @@ pub fn run_part_2(path: &str) -> EmulatorMemoryType {
         .collect::<Result<Vec<_>, _>>()
         .unwrap();
 
-    let emulator = Emulator::new(&initial_memory, std::iter::once(5));
+    let emulator = Emulator::new(&initial_memory, std::iter::once(Ok(5)));
     let outputs = emulator
         .into_output_iter()
         .collect::<Result<Vec<_>, _>>()
