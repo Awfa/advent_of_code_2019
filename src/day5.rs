@@ -1,17 +1,11 @@
+use super::get_intcode_memory_from_file;
 use super::intcode::*;
-use std::fs::File;
-use std::io::BufRead;
+use std::iter::once;
 
 pub fn run_part_1(path: &str) -> EmulatorMemoryType {
-    let input_file = File::open(path).unwrap();
-    let reader = std::io::BufReader::new(input_file);
-    let initial_memory = reader
-        .split(b',')
-        .map(|s| std::str::from_utf8(&s.unwrap()).unwrap().trim().parse())
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap();
+    let initial_memory = get_intcode_memory_from_file(path);
 
-    let emulator = Emulator::new(&initial_memory, std::iter::once(Ok(1)));
+    let emulator = Emulator::new(&initial_memory, once(Ok(1)));
     let outputs = emulator
         .into_output_iter()
         .collect::<Result<Vec<_>, _>>()
@@ -20,15 +14,9 @@ pub fn run_part_1(path: &str) -> EmulatorMemoryType {
 }
 
 pub fn run_part_2(path: &str) -> EmulatorMemoryType {
-    let input_file = File::open(path).unwrap();
-    let reader = std::io::BufReader::new(input_file);
-    let initial_memory = reader
-        .split(b',')
-        .map(|s| std::str::from_utf8(&s.unwrap()).unwrap().trim().parse())
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap();
+    let initial_memory = get_intcode_memory_from_file(path);
 
-    let emulator = Emulator::new(&initial_memory, std::iter::once(Ok(5)));
+    let emulator = Emulator::new(&initial_memory, once(Ok(5)));
     let outputs = emulator
         .into_output_iter()
         .collect::<Result<Vec<_>, _>>()

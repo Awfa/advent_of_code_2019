@@ -1,15 +1,8 @@
+use super::get_intcode_memory_from_file;
 use super::intcode::*;
-use std::fs::File;
-use std::io::BufRead;
 
 pub fn run_part_1(path: &str) -> EmulatorMemoryType {
-    let input_file = File::open(path).unwrap();
-    let reader = std::io::BufReader::new(input_file);
-    let mut initial_memory = reader
-        .split(b',')
-        .map(|s| std::str::from_utf8(&s.unwrap()).unwrap().trim().parse())
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap();
+    let mut initial_memory = get_intcode_memory_from_file(path);
 
     initial_memory[1] = 12;
     initial_memory[2] = 2;
@@ -18,13 +11,7 @@ pub fn run_part_1(path: &str) -> EmulatorMemoryType {
 }
 
 pub fn run_part_2(path: &str) -> Option<EmulatorMemoryType> {
-    let input_file = File::open(path).unwrap();
-    let reader = std::io::BufReader::new(input_file);
-    let mut initial_memory = reader
-        .split(b',')
-        .map(|s| std::str::from_utf8(&s.unwrap()).unwrap().trim().parse())
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap();
+    let mut initial_memory = get_intcode_memory_from_file(path);
 
     for noun in 0..=99 {
         for verb in 0..=99 {

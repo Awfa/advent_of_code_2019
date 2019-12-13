@@ -1,52 +1,104 @@
+use super::get_intcode_memory_from_file;
 use super::intcode::*;
-use std::fs::File;
-use std::io::BufRead;
+use std::cell::RefCell;
+use std::collections::VecDeque;
+use std::iter::once;
 
 pub fn run_part_1(path: &str) -> EmulatorMemoryType {
-    let input_file = File::open(path).unwrap();
-    let reader = std::io::BufReader::new(input_file);
-    let initial_memory = reader
-        .split(b',')
-        .map(|s| std::str::from_utf8(&s.unwrap()).unwrap().trim().parse())
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap();
+    let initial_memory = get_intcode_memory_from_file(path);
 
-    let mut highest_output_settings = None;
+    let mut highest_thrust = None;
     let initial_input = 0;
     let mut permutator = Permutator::new((0..=4).collect());
     while let Some(x) = permutator.next() {
         let (phase_a, phase_b, phase_c, phase_d, phase_e) = (x[0], x[1], x[2], x[3], x[4]);
-        let emulator_a = Emulator::new(&initial_memory, std::iter::once(Ok(phase_a)).chain(std::iter::once(Ok(initial_input))));
-        let emulator_b = Emulator::new(&initial_memory, std::iter::once(Ok(phase_b)).chain(emulator_a.into_output_iter()));
-        let emulator_c = Emulator::new(&initial_memory, std::iter::once(Ok(phase_c)).chain(emulator_b.into_output_iter()));
-        let emulator_d = Emulator::new(&initial_memory, std::iter::once(Ok(phase_d)).chain(emulator_c.into_output_iter()));
-        let emulator_e = Emulator::new(&initial_memory, std::iter::once(Ok(phase_e)).chain(emulator_d.into_output_iter()));
+        let emulator_a = Emulator::new(
+            &initial_memory,
+            once(Ok(phase_a)).chain(once(Ok(initial_input))),
+        );
+        let emulator_b = Emulator::new(
+            &initial_memory,
+            once(Ok(phase_b)).chain(emulator_a.into_output_iter()),
+        );
+        let emulator_c = Emulator::new(
+            &initial_memory,
+            once(Ok(phase_c)).chain(emulator_b.into_output_iter()),
+        );
+        let emulator_d = Emulator::new(
+            &initial_memory,
+            once(Ok(phase_d)).chain(emulator_c.into_output_iter()),
+        );
+        let emulator_e = Emulator::new(
+            &initial_memory,
+            once(Ok(phase_e)).chain(emulator_d.into_output_iter()),
+        );
 
-        let thrust_output = emulator_e.into_output_iter().next().unwrap().unwrap();
-        let candidate_output_settings = Some(((phase_a, phase_b, phase_c, phase_d, phase_e), thrust_output));
-        highest_output_settings = highest_output_settings.map_or(candidate_output_settings, |current| {
-            let (_, prev_thrust_output) = current;
-            if prev_thrust_output > thrust_output {
-                Some(current)
-            } else {
-                candidate_output_settings
-            }
+        let thrust_output = emulator_e.into_output_iter().last().unwrap().unwrap();
+        highest_thrust = highest_thrust.map_or(Some(thrust_output), |current| {
+            Some(std::cmp::max(thrust_output, current))
         });
     }
-    println!("{:?}", highest_output_settings);
-    highest_output_settings.map(|(_, highest_output)| highest_output).unwrap()
+
+    highest_thrust.unwrap()
+}
+
+pub fn run_part_2(path: &str) -> EmulatorMemoryType {
+    let initial_memory = get_intcode_memory_from_file(path);
+
+    let mut highest_thrust = None;
+    let initial_input = 0;
+    let mut permutator = Permutator::new((5..=9).collect());
+    while let Some(x) = permutator.next() {
+        let (phase_a, phase_b, phase_c, phase_d, phase_e) = (x[0], x[1], x[2], x[3], x[4]);
+
+        let emulator_e_a_loopback_pipe =
+            RefCell::new(VecDeque::<Result<EmulatorMemoryType, EmulatorError>>::new());
+        let loopback_iter =
+            std::iter::from_fn(|| emulator_e_a_loopback_pipe.borrow_mut().pop_front());
+        let emulator_a_iter = once(Ok(phase_a))
+            .chain(once(Ok(initial_input)))
+            .chain(loopback_iter);
+        let emulator_a = Emulator::new(&initial_memory, emulator_a_iter);
+        let emulator_b = Emulator::new(
+            &initial_memory,
+            once(Ok(phase_b)).chain(emulator_a.into_output_iter()),
+        );
+        let emulator_c = Emulator::new(
+            &initial_memory,
+            once(Ok(phase_c)).chain(emulator_b.into_output_iter()),
+        );
+        let emulator_d = Emulator::new(
+            &initial_memory,
+            once(Ok(phase_d)).chain(emulator_c.into_output_iter()),
+        );
+        let emulator_e = Emulator::new(
+            &initial_memory,
+            once(Ok(phase_e)).chain(emulator_d.into_output_iter()),
+        );
+        let output_iterator = emulator_e.into_output_iter().map(|value| {
+            emulator_e_a_loopback_pipe.borrow_mut().push_back(value);
+            value
+        });
+
+        let thrust_output = output_iterator.last().unwrap().unwrap();
+        highest_thrust = highest_thrust.map_or(Some(thrust_output), |current| {
+            Some(std::cmp::max(thrust_output, current))
+        })
+    }
+
+    highest_thrust.unwrap()
 }
 
 struct Permutator {
     array: Vec<EmulatorMemoryType>,
-    recursion_stack: Vec<(usize, usize, bool)>
+    recursion_stack: Vec<(usize, usize, bool)>,
 }
 
 impl Permutator {
     fn new(array: Vec<EmulatorMemoryType>) -> Permutator {
         Permutator {
             array,
-            recursion_stack: vec![(0, 0, false)]
+            recursion_stack: vec![(0, 0, false)],
         }
     }
 
@@ -63,11 +115,11 @@ impl Permutator {
                     } else if !explored {
                         self.array.swap(start, swap_index);
                         self.recursion_stack.push((start, swap_index, true));
-                        self.recursion_stack.push((start+1, start+1, false));
+                        self.recursion_stack.push((start + 1, start + 1, false));
                         continue;
                     } else {
                         self.array.swap(start, swap_index);
-                        self.recursion_stack.push((start, swap_index+1, false));
+                        self.recursion_stack.push((start, swap_index + 1, false));
                         continue;
                     }
                 }
